@@ -23,6 +23,10 @@ public class KeyboardConstant
                 InlineKeyboardButton.SetCallbackData(text: "👬 Referral", callbackData: "Referral"),
                 InlineKeyboardButton.SetCallbackData(text: "📚 Description", callbackData: "Description"),
             },
+            new List<InlineKeyboardButton>()
+            {
+                InlineKeyboardButton.SetCallbackData(text: "🎡 Wheel of luck", callbackData: "WheelOfLuck"),
+            },
         };
         if (showAdminPanel)
             keyboard.Add(new List<InlineKeyboardButton>()
@@ -116,12 +120,15 @@ public class KeyboardConstant
         {
             new List<InlineKeyboardButton>()
             {
-                InlineKeyboardButton.SetCallbackData(text: "💊 Public Message", callbackData: $"PublicMessage"),
+                InlineKeyboardButton.SetCallbackData(text: "🧶  User Info", callbackData: $"UserStatistics"),
             },
             new List<InlineKeyboardButton>()
             {
-                InlineKeyboardButton.SetCallbackData(text: "🪦 General Info", callbackData: $"GeneralStatistics"),
-                InlineKeyboardButton.SetCallbackData(text: "🚨  User Info", callbackData: $"UserStatistics"),
+                InlineKeyboardButton.SetCallbackData(text: "🔮 General Info", callbackData: $"GeneralStatistics"),
+            },
+            new List<InlineKeyboardButton>()
+            {
+                InlineKeyboardButton.SetCallbackData(text: "🎃 Public Message", callbackData: $"PublicMessage"),
             },
             new List<InlineKeyboardButton>()
             {

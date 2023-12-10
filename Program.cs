@@ -48,17 +48,22 @@ using IServiceScope scope = application.Services.CreateScope();
 scope.ServiceProvider.GetRequiredService<TelegramHandler>().polling();
 
 await application.RunAsync("http://localhost:5000");
+
 public class AdditionalConfiguration
 {
     public long OwnerId = 6687799929;
     public long[] AdminIds = { 6687799929 };
 
     public int MinimumDeposit = 50;
-    public int MinimumWithdraw = 100;
     public int MaximumDeposit = 10000;
 
+    public int MinimumWithdraw = 500;
+
+    public int MinimumCreateGame = 10;
+    public int MaximumCreateGame = 10000;
+
     public string WalletAddress = "TMn66ywkUt3XMdZuneXK7cLKLtrn8EhTbj"; // Owner Wallet Address
-    public string TelegramAccessToken = "2843723487:AAG2FqriWSbdB134LMx29438X1vlfjmdsfp38TWmM"; // get Telegram bot token T.me/botfather
-    public string TronGridApiAccessToken = "482439-3435-4325-afsbr-3498jdal92"; // get Api key Tron Grid
+    public string TelegramAccessToken = "6518861632:AAG2FqriWSbdB1LvqMxHsX1vlfWEp38TWmM"; // get Telegram bot token T.me/botfather
+    public string TronGridApiAccessToken = "13384731-3af7-4983-adbe-82284a78ae80"; // get Api key Tron Grid
     public CurrencyEnum DefaultCurrency = CurrencyEnum.Trx;
 }

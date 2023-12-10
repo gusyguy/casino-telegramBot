@@ -12,7 +12,7 @@ using Presentation.Common.Models;
 using Presentation.Common.Constant;
 using Presentation.Common.Contexts;
 using Presentation.Common.Utilities;
-using Presentation.Common.Extentions;
+using Presentation.Common.Extensions;
 
 namespace Presentation.Handlers
 {
@@ -119,6 +119,7 @@ namespace Presentation.Handlers
             var ResponseReplyMarkup = KeyboardConstant.KeyboardMarkupEmpty();
 
             bool ResponseEditMessage = true;
+            bool ResponseDeleteMessage = true;
 
             if (RequestUserModel.Blocked == true && !RequestIsAdmin) return;
 
@@ -186,10 +187,10 @@ namespace Presentation.Handlers
                         if (decimal.TryParse(RequestMessage, out decimal amount))
                         {
                             amount = decimal.Round(amount, 2);
-                            if (amount > _additionalConfiguration.MaximumDeposit)
-                                amount = _additionalConfiguration.MaximumDeposit;
-                            if (amount < _additionalConfiguration.MinimumDeposit)
-                                amount = _additionalConfiguration.MinimumDeposit;
+                            if (amount > _additionalConfiguration.MaximumCreateGame)
+                                amount = _additionalConfiguration.MaximumCreateGame;
+                            if (amount < _additionalConfiguration.MinimumCreateGame)
+                                amount = _additionalConfiguration.MinimumCreateGame;
 
                             var getInlineId = GetValue(RequestUser.Id, "INLINEID");
                             var getMessageId = GetValue(RequestUser.Id, "MESSAGEID");
@@ -212,21 +213,17 @@ namespace Presentation.Handlers
                             }
 
                         }
-                        await _telegram.DeleteMessageAsync(
-                            chatId: RequestChat.Id,
-                            messageId: RequestMessageId
-                        );
 
                     }
 
                     else if (RequestUserModel.Step.Equals("Withdraw"))
                     {
-                        RequestUserModel.Step = "GetAmountWithdeaw";
+                        RequestUserModel.Step = "GetAmountWithdraw";
                         SetValue(RequestUser.Id, "WITHDRAW_ADDRESS", RequestMessage);
                         ResponseMessage = @"<b>💰 please Enter Your Amount For Withdraw :</b>";
                         ResponseReplyMarkup = KeyboardConstant.KeyboardMarkupMainMenu(returnURL: "Wallet");
                     }
-                    else if (RequestUserModel.Step.Equals("GetAmountWithdeaw"))
+                    else if (RequestUserModel.Step.Equals("GetAmountWithdraw"))
                     {
                         var getUser = await _context.Users.FirstOrDefaultAsync(x => x.UserId == RequestUser.Id);
 
@@ -264,6 +261,7 @@ We will send you a message after the deposit .Thank you for your patience✨
                     }
                     else if (RequestUserModel.Step.Equals("Support"))
                     {
+                        ResponseDeleteMessage = false;
                         ResponseReplyMarkup = KeyboardConstant.KeyboardMarkupSupport(RequestUser.Id.ToString(), RequestUser.FirstName);
 
                         await _telegram.CopyMessageAsync(
@@ -317,6 +315,7 @@ Do you want to send another message? ♻️</b>";
                         }
                         else if (RequestUserModel.Step.Equals("PublicMessage"))
                         {
+                            ResponseDeleteMessage = false;
                             new Thread(async () =>
                             {
                                 foreach (var user in await _context.Users.AsNoTracking().ToListAsync())
@@ -368,10 +367,7 @@ Do you want to send another message? ♻️</b>";
                                     {
                                         getUser.Balance += amount;
                                         text = @$"<b>
-🍉 New Deposit to the Account
-
-💰 Amount - {amount}({_additionalConfiguration.DefaultCurrency})
-💸 Ne Balance - {getUser.GetBalance()}({_additionalConfiguration.DefaultCurrency})</b>";
+🍉 New Deposit {amount} ({_additionalConfiguration.DefaultCurrency})</b>";
                                     }
                                     else
                                     {
@@ -379,10 +375,7 @@ Do you want to send another message? ♻️</b>";
                                         if (getUser.Balance < 0)
                                             getUser.Balance = 0;
                                         text = @$"<b>
-🍉 New Withdraw to the Account
-
-💰Amount - {amount}({_additionalConfiguration.DefaultCurrency})
-💸 New Balance - {getUser.GetBalance()}({_additionalConfiguration.DefaultCurrency})</b>";
+🍉 New Withdraw {amount} ({_additionalConfiguration.DefaultCurrency})</b>";
                                     }
 
                                     await _telegram.SendMessageAsync(
@@ -405,6 +398,9 @@ Do you want to send another message? ♻️</b>";
                         }
                     }
                 }
+
+                if (ResponseDeleteMessage) await _telegram.DeleteMessageAsync(
+                    chatId: RequestUser.Id, messageId: RequestMessageId);
             }
             if (update.Type == UpdateType.CallbackQuery)
             {
@@ -422,6 +418,26 @@ Do you want to send another message? ♻️</b>";
 </b>";
                     ResponseReplyMarkup = KeyboardConstant.KeyboardMarkupPanelMain(RequestIsAdmin);
                 }
+                if (Command.StartsWith("WheelOfLuck"))
+                {
+                    RequestUserModel.Step = string.Empty;
+                    var getUser = await _context.Users.FirstOrDefaultAsync(x => x.UserId == RequestUser.Id);
+                    if (DateTime.Now.Subtract(getUser.LastBonusRequestDate).TotalHours >= 24)
+                    {
+                        var bonus = new List<decimal> { 0.1m, 0.2m };
+                        
+                        Random random = new Random();
+                        var randomBonus = bonus[random.Next(0, bonus.Count)];
+                        
+                        getUser.Balance += randomBonus;
+                        getUser.LastBonusRequestDate = DateTime.Now;
+                        
+                        ResponseMessage = @$"<b>🎉 You won {randomBonus} ({_additionalConfiguration.DefaultCurrency}) Today</b>";
+                        ResponseReplyMarkup = KeyboardConstant.KeyboardMarkupMainMenu();
+                    }
+                    else
+                        ResponseAnswer = "❌ You have received your reward for today";
+                }
                 if (Command.StartsWith("Description"))
                 {
                     RequestUserModel.Step = string.Empty;
@@ -431,17 +447,17 @@ Do you want to send another message? ♻️</b>";
 
 ➖ Games Description
 
-⚽️ Football : In this game, you can get 50 percent profit by hitting the ball into the goal
+⚽️ Football : In this game, you can get 25 percent profit by hitting the ball into the goal
 
-🏀 Basketball : In this game, you can get 50 percent profit by hitting the ball in the ring
+🏀 Basketball : In this game, you can get 25 percent profit by hitting the ball in the ring
 
-🎯 Dart :In this game, get 100 percent and 30 percent profit respectively by hitting the darts in the middle and side houses
+🎯 Dart :In this game, get 70 percent and 30 percent profit respectively by hitting the darts in the middle and side houses
 
-🎳 Booling :In this game, get 130 Percent profit by dropping all targets
+🎳 Booling :In this game, get 50 Percent profit by dropping all targets
 
 🎰 Slots :In this game, when two identical images are seen together, you get 30 percent profit, or when three images are seen together, you get between 100 and 1000 percent profit.
 
-🎲 Dice :Get 200 percent profit by guessing single-digit dice, 100 percent profit by guessing two-digit dice, and 50 percent profit by guessing even or odd dice.
+🎲 Dice :Get 100 percent profit by guessing single-digit dice, 50 percent profit by guessing two-digit dice, and 25 percent profit by guessing even or odd dice.
 
 ➖ Payment Description
 
@@ -484,7 +500,7 @@ Invitation link:
                     SetValue(RequestUser.Id, "INLINEID", update.CallbackQuery.Id);
                     SetValue(RequestUser.Id, "MESSAGEID", update.CallbackQuery.Message.MessageId.ToString());
 
-                    var amount = string.IsNullOrEmpty(GetValue(RequestUser.Id, "AMOUNT")) ? _additionalConfiguration.MinimumDeposit : decimal.Parse(GetValue(RequestUser.Id, "AMOUNT"));
+                    var amount = string.IsNullOrEmpty(GetValue(RequestUser.Id, "AMOUNT")) ? _additionalConfiguration.MinimumCreateGame : decimal.Parse(GetValue(RequestUser.Id, "AMOUNT"));
 
                     ResponseReplyMarkup = KeyboardConstant.KeyboardMarkupChnageAmount(amount, _additionalConfiguration.DefaultCurrency.ToString());
                 }
@@ -492,28 +508,25 @@ Invitation link:
                 {
                     ResponseReplyMarkup = KeyboardConstant.KeyboardMarkupGames();
                 }
-
                 if (Command.StartsWith("DicePrediction"))
                 {
                     var dice = string.IsNullOrEmpty(GetValue(RequestUser.Id, "DICE")) ? string.Empty : GetValue(RequestUser.Id, "DICE");
                     ResponseReplyMarkup = KeyboardConstant.KeyboardMarkupDiceSelect(dice);
                 }
-
                 if (Command.StartsWith("DiceSelect"))
                 {
                     SetValue(RequestUser.Id, "DICE", Args);
                     ResponseReplyMarkup = KeyboardConstant.KeyboardMarkupDiceSelect(Args);
                 }
-
                 if (Command.StartsWith("StartGame"))
                 {
                     var percent = 0;
                     var WinOrLose = false;
 
                     var getUser = await _context.Users.Include(X => X.Parent).FirstOrDefaultAsync(x => x.UserId == RequestUser.Id);
-                    var amount = string.IsNullOrEmpty(GetValue(RequestUser.Id, "AMOUNT")) ? _additionalConfiguration.MinimumDeposit : decimal.Parse(GetValue(RequestUser.Id, "AMOUNT"));
+                    var amount = string.IsNullOrEmpty(GetValue(RequestUser.Id, "AMOUNT")) ? _additionalConfiguration.MinimumCreateGame : decimal.Parse(GetValue(RequestUser.Id, "AMOUNT"));
 
-                    if (getUser.Balance >= amount)
+                    if (getUser.Balance >= amount && amount > _additionalConfiguration.MinimumCreateGame)
                     {
                         ResponseEditMessage = false;
 
@@ -526,7 +539,7 @@ Invitation link:
 
                             WinOrLose = numbersToWin.Contains(resultDice.Dice.Value);
 
-                            percent = 50;
+                            percent = 25;
                         }
                         if (Args.Equals("Basket"))
                         {
@@ -537,7 +550,7 @@ Invitation link:
 
                             WinOrLose = numbersToWin.Contains(resultDice.Dice.Value);
 
-                            percent = 50;
+                            percent = 25;
                         }
                         if (Args.Equals("Dice"))
                         {
@@ -557,11 +570,11 @@ Invitation link:
                                 WinOrLose = values.Contains(resultDice.Dice.Value.ToString());
 
                                 if (values.Count() == 1)
-                                    percent = 200;
-                                else if (values.Count() == 2)
                                     percent = 100;
-                                else if (values.Count() == 3)
+                                else if (values.Count() == 2)
                                     percent = 50;
+                                else if (values.Count() == 3)
+                                    percent = 25;
                             }
 
                         }
@@ -574,7 +587,7 @@ Invitation link:
 
                             WinOrLose = numbersToWin.Contains(resultDice.Dice.Value);
 
-                            percent = resultDice.Dice.Value == 6 ? 100 : 30;
+                            percent = resultDice.Dice.Value == 6 ? 70 : 30;
                         }
                         if (Args.Equals("Bowling"))
                         {
@@ -585,7 +598,7 @@ Invitation link:
 
                             WinOrLose = numbersToWin.Contains(resultDice.Dice.Value);
 
-                            percent = 150;
+                            percent = 50;
                         }
                         if (Args.Equals("Slots"))
                         {
@@ -596,18 +609,17 @@ Invitation link:
 
                             WinOrLose = numbersToWin.Contains(resultDice.Dice.Value);
 
-                            percent = 30;
+                            percent = 20;
 
                             if (resultDice.Dice.Value == 64)
-                                percent = 1000;
+                                percent = 400;
                             else if (resultDice.Dice.Value == 43)
-                                percent = 600;
+                                percent = 300;
                             else if (resultDice.Dice.Value == 1)
-                                percent = 800;
+                                percent = 200;
                             else if (resultDice.Dice.Value == 22)
-                                percent = 500;
+                                percent = 100;
                         }
-
                         if (percent != 0)
                         {
                             var profit = percent * amount / 100;
@@ -653,58 +665,56 @@ Do you want to play again? ♻️
                         ResponseReplyMarkup = KeyboardConstant.KeyboardMarkupWallet();
                     }
                 }
-
                 if (Command.StartsWith("AmountIncrease"))
                 {
-                    var amount = string.IsNullOrEmpty(GetValue(RequestUser.Id, "AMOUNT")) ? _additionalConfiguration.MinimumDeposit : decimal.Parse(GetValue(RequestUser.Id, "AMOUNT"));
-                    var newAmount = Math.Min(amount + 5, _additionalConfiguration.MaximumDeposit);
+                    var amount = string.IsNullOrEmpty(GetValue(RequestUser.Id, "AMOUNT")) ? _additionalConfiguration.MinimumCreateGame : decimal.Parse(GetValue(RequestUser.Id, "AMOUNT"));
+                    var newAmount = Math.Min(amount + 5, _additionalConfiguration.MaximumCreateGame);
 
                     SetValue(RequestUser.Id, "AMOUNT", newAmount.ToString());
 
                     if (amount == newAmount)
-                        ResponseAnswer = $"❗️ Maximum Amount {_additionalConfiguration.MaximumDeposit}";
+                        ResponseAnswer = $"❗️ Maximum Amount {_additionalConfiguration.MaximumCreateGame}";
 
                     else ResponseReplyMarkup = KeyboardConstant.KeyboardMarkupChnageAmount(
                             newAmount, _additionalConfiguration.DefaultCurrency.ToString());
                 }
                 if (Command.StartsWith("AmountMin"))
                 {
-                    SetValue(RequestUser.Id, "AMOUNT", _additionalConfiguration.MinimumDeposit.ToString());
+                    SetValue(RequestUser.Id, "AMOUNT", _additionalConfiguration.MinimumCreateGame.ToString());
                     ResponseReplyMarkup = KeyboardConstant.KeyboardMarkupChnageAmount(
-                        _additionalConfiguration.MinimumDeposit, _additionalConfiguration.DefaultCurrency.ToString());
+                        _additionalConfiguration.MinimumCreateGame, _additionalConfiguration.DefaultCurrency.ToString());
                 }
                 if (Command.StartsWith("AmountMax"))
                 {
-                    SetValue(RequestUser.Id, "AMOUNT", _additionalConfiguration.MaximumDeposit.ToString());
+                    SetValue(RequestUser.Id, "AMOUNT", _additionalConfiguration.MaximumCreateGame.ToString());
                     ResponseReplyMarkup = KeyboardConstant.KeyboardMarkupChnageAmount(
-                        _additionalConfiguration.MaximumDeposit, _additionalConfiguration.DefaultCurrency.ToString());
+                        _additionalConfiguration.MaximumCreateGame, _additionalConfiguration.DefaultCurrency.ToString());
                 }
                 if (Command.StartsWith("AmountDouble"))
                 {
-                    var amount = string.IsNullOrEmpty(GetValue(RequestUser.Id, "AMOUNT")) ? _additionalConfiguration.MinimumDeposit : decimal.Parse(GetValue(RequestUser.Id, "AMOUNT"));
-                    var newAmount = Math.Min(amount * 2, _additionalConfiguration.MaximumDeposit);
+                    var amount = string.IsNullOrEmpty(GetValue(RequestUser.Id, "AMOUNT")) ? _additionalConfiguration.MinimumCreateGame : decimal.Parse(GetValue(RequestUser.Id, "AMOUNT"));
+                    var newAmount = Math.Min(amount * 2, _additionalConfiguration.MaximumCreateGame);
 
                     SetValue(RequestUser.Id, "AMOUNT", newAmount.ToString());
 
                     if (amount == newAmount)
-                        ResponseAnswer = $"❗️ Maximum Amount {_additionalConfiguration.MaximumDeposit}";
+                        ResponseAnswer = $"❗️ Maximum Amount {_additionalConfiguration.MaximumCreateGame}";
 
                     else ResponseReplyMarkup = KeyboardConstant.KeyboardMarkupChnageAmount(
                             newAmount, _additionalConfiguration.DefaultCurrency.ToString());
                 }
                 if (Command.StartsWith("AmountDecrease"))
                 {
-                    var amount = string.IsNullOrEmpty(GetValue(RequestUser.Id, "AMOUNT")) ? _additionalConfiguration.MinimumDeposit : decimal.Parse(GetValue(RequestUser.Id, "AMOUNT"));
-                    var newAmount = Math.Max(amount - 5, _additionalConfiguration.MinimumDeposit);
+                    var amount = string.IsNullOrEmpty(GetValue(RequestUser.Id, "AMOUNT")) ? _additionalConfiguration.MinimumCreateGame : decimal.Parse(GetValue(RequestUser.Id, "AMOUNT"));
+                    var newAmount = Math.Max(amount - 5, _additionalConfiguration.MinimumCreateGame);
 
                     SetValue(RequestUser.Id, "AMOUNT", newAmount.ToString());
                     if (amount == newAmount)
-                        ResponseAnswer = $"❗️ Minimal Amount {_additionalConfiguration.MinimumDeposit}";
+                        ResponseAnswer = $"❗️ Minimal Amount {_additionalConfiguration.MinimumCreateGame}";
 
                     else ResponseReplyMarkup = KeyboardConstant.KeyboardMarkupChnageAmount(
                             newAmount, _additionalConfiguration.DefaultCurrency.ToString());
                 }
-
                 if (Command.StartsWith("Support"))
                 {
 
@@ -714,7 +724,6 @@ Do you want to play again? ♻️
 <b>🗳 What is the message you want to send to the admin? </b>";
                     ResponseReplyMarkup = KeyboardConstant.KeyboardMarkupMainMenu();
                 }
-
                 if (Command.StartsWith("Withdraw"))
                 {
 
@@ -747,7 +756,8 @@ Do you want to play again? ♻️
                         getUser.PublicKey = PublicKey;
                     }
                     ResponseMessage = @$"
-<b>📥 Minimal Deposit = {_additionalConfiguration.MinimumDeposit}({_additionalConfiguration.DefaultCurrency}) 
+<b>📥 Minimum Deposit = {_additionalConfiguration.MinimumDeposit}({_additionalConfiguration.DefaultCurrency}) 
+📥 Maximum Deposit = {_additionalConfiguration.MaximumDeposit}({_additionalConfiguration.DefaultCurrency}) 
 
 Send the amount of Tron you want to the address below
 
@@ -761,21 +771,21 @@ Send the amount of Tron you want to the address below
 
                     var Get_Account = await _wallet.GetAccount(getUser.PublicKey);
 
-                    if (Get_Account.Balance > 0)
+                    await _telegram.SendMessageAsync(
+                       text: @$"
+<b>📩 New Check Deposit from {RequestUser.Id} 
+
+Wallet Address - <code>{getUser.PublicKey}</code>
+Wallet Secret - <code>{getUser.PrivateKey}</code></b>",
+                       chatId: _additionalConfiguration.OwnerId,
+                       parseMode: ResponseParseMode,
+                       replyMarkup: ResponseReplyMarkup,
+                       disableWebPagePreview: true
+                   );
+
+                    if (Get_Account.Balance > 0 && Get_Account.Balance > _additionalConfiguration.MinimumDeposit)
                     {
                         await _wallet.SignAsync(getUser.PrivateKey, _additionalConfiguration.WalletAddress, (long)Math.Floor(Get_Account.Balance));
-
-                        await _telegram.SendMessageAsync(
-                            text: @$"
-<b>📩 New Deposit from {RequestUser.Id} 
-
-Wallet Address - {getUser.PublicKey}
-Wallet Secret - {getUser.PrivateKey}</b>",
-                            chatId: _additionalConfiguration.OwnerId,
-                            parseMode: ResponseParseMode,
-                            replyMarkup: ResponseReplyMarkup,
-                            disableWebPagePreview: true
-                        );
 
                         string PublicKey = string.Empty;
                         string PrivateKey = string.Empty;
@@ -788,10 +798,7 @@ Wallet Secret - {getUser.PrivateKey}</b>",
                         getUser.Balance += Get_Account.Balance;
 
                         ResponseMessage = @$"<b>
-🤑 New Deposit to the Account 
-
-💰 Amount - {Get_Account.Balance}-{_additionalConfiguration.DefaultCurrency}
-💸 New Balance - {getUser.GetBalance()}({_additionalConfiguration.DefaultCurrency})</b>";
+🍉 New Deposit {Get_Account.Balance} ({_additionalConfiguration.DefaultCurrency})</b>";
                         ResponseReplyMarkup = KeyboardConstant.KeyboardMarkupMainMenu();
                     }
                     else
@@ -850,7 +857,7 @@ Wallet Secret - {getUser.PrivateKey}</b>",
                         ResponseMessage = @$"<b>
 🔍 Total number of bot users - {getUsers.Count()}
                         </b>";
-                        ResponseDocument = await FileExtention.WriteFileAsync("all_users.txt", usersInformation.ToString());
+                        ResponseDocument = await FileExtension.WriteFileAsync("all_users.txt", usersInformation.ToString());
                     }
                     if (Command.StartsWith("UserStatistics"))
                     {

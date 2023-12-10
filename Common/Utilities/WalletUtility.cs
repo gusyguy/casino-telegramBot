@@ -1,6 +1,6 @@
 using TronNet;
 using Microsoft.Extensions.Options;
-using Presentation.Common.Extentions;
+using Presentation.Common.Extensions;
 
 namespace Presentation.Common.Utilities;
 public class WalletUtility
@@ -54,7 +54,7 @@ public class WalletUtility
                 { "accept", "application/json"},
                 { "TRON-PRO-API-KEY", _configuration.TronGridApiAccessToken }
             };
-            return await HttpClientExtention.PostAsync<AccountResponse>(url, parameters, headers);
+            return await HttpClientExtension.PostAsync<AccountResponse>(url, parameters, headers);
         }
         catch (Exception)
         {
