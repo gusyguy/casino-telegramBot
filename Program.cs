@@ -63,7 +63,7 @@ public class AdditionalConfiguration
     public int MaximumCreateGame = 10000;
 
     public string WalletAddress = "TMn66ywkUt3XMdZuneXK7cLKLtrn8EhTbj"; // Owner Wallet Address
-    public string TelegramAccessToken = "6518861632:AAG2FqriWSbdB1LvqMxHsX1vlfWEp38TWmM"; // get Telegram bot token T.me/botfather
+    public string TelegramAccessToken = "6832151274:AAEWO_Jq0BxHm5h38wG4CLxO163KgDZ1tNk"; // get Telegram bot token T.me/botfather
     public string TronGridApiAccessToken = "13384731-3af7-4983-adbe-82284a78ae80"; // get Api key Tron Grid
     public CurrencyEnum DefaultCurrency = CurrencyEnum.Trx;
 }
